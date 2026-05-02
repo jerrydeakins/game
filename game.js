@@ -18,7 +18,10 @@ createApp({
             { id: 'shop', name: 'Магазин', icon: '🏪', baseCost: 500, baseIncome: 8, count: 0 },
             { id: 'office', name: 'Офисное здание', icon: '🏢', baseCost: 2000, baseIncome: 15, count: 0 },
             { id: 'factory', name: 'Фабрика', icon: '🏭', baseCost: 8000, baseIncome: 40, count: 0 },
-            { id: 'skyscraper', name: 'Небоскреб', icon: '🏙️', baseCost: 50000, baseIncome: 120, count: 0 }
+            { id: 'skyscraper', name: 'Небоскреб', icon: '🏙️', baseCost: 50000, baseIncome: 120, count: 0 },
+            { id: 'mall', name: 'Торговый центр', icon: '🛒', baseCost: 200000, baseIncome: 300 },
+            { id: 'bank', name: 'Банк', icon: '🏦', baseCost: 500000, baseIncome: 750 },
+            { id: 'tech_hub', name: 'Технопарк', icon: '🔬', baseCost: 1000000, baseIncome: 2000 }
         ]);
 
         const modifiers = ref([
