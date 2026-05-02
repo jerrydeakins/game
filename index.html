@@ -6,11 +6,9 @@
     <title>Экономический Кликер: Монаполис</title>
     
     <!-- Подключение библиотек -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     
     <!-- Подключение CSS -->
@@ -21,24 +19,14 @@
         <!-- Шапка с заголовком -->
         <header class="header">
             <h1 class="title">🏙️ Экономический Кликер</h1>
-            <p class="subtitle">Постройте империю и станьте магнатом!</p>
+            <p class="subtitle">{{ subtitleText }}</p>
             
             <!-- Статистика -->
             <div class="stats-bar">
-                <div class="stat-item">
-                    <div class="stat-icon">💰</div>
-                    <div class="stat-value">{{ formatNumber(stats.money) }}</div>
-                    <div class="stat-label">Деньги</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-icon">🏢</div>
-                    <div class="stat-value">{{ stats.totalBuildings }}</div>
-                    <div class="stat-label">Здания</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-icon">💵</div>
-                    <div class="stat-value">{{ formatNumber(stats.incomePerSecond) }}/сек</div>
-                    <div class="stat-label">Доход/сек</div>
+                <div class="stat-item" v-for="(value, key) in stats" :key="key">
+                    <div class="stat-icon">{{ getStatIcon(key) }}</div>
+                    <div class="stat-value">{{ formatNumber(getStatValue(key)) }}</div>
+                    <div class="stat-label">{{ getStatLabel(key) }}</div>
                 </div>
             </div>
         </header>
@@ -47,9 +35,9 @@
         <section class="click-section">
             <button class="main-button" @click="handleClick" :disabled="isAnimating">
                 <span class="button-text">КЛИК!</span>
-                <span class="bonus-text">+{{ formatNumber(clickValue) }}</span>
+                <span class="bonus-text">+{{ formatNumber(stats.clickValue) }}</span>
             </button>
-            <p class="hint">Нажимайте, чтобы заработать первые деньги</p>
+            <p class="hint">{{ clickHintText }}</p>
         </section>
 
         <!-- Сетка зданий -->
@@ -58,7 +46,7 @@
         <div class="buildings-grid">
             <div v-for="(building, index) in buildings" :key="building.id" 
                  class="building-card"
-                 :class="{ 'affordable': canAfford(building), 'highlighted': building.count > 0 }"
+                 :class="{ 'affordable': canAfford(building), 'purchased': building.count > 0 }"
                  @click="buyBuilding(index)">
                 
                 <div class="card-header">
@@ -67,8 +55,8 @@
                 
                 <div class="building-icon">{{ building.icon }}</div>
                 <h3 class="building-name">{{ building.name }}</h3>
-                <p class="building-cost">💰 {{ formatNumber(getCost(building)) }}</p>
-                <p class="building-income" :style="{ color: building.type === 'global' ? '#006400' : '#28a745' }">
+                <p class="building-cost">💰 {{ formatNumber(getBuildingCost(building)) }}</p>
+                <p class="building-income" :style="{ color: getIncomeColor(building.type) }">
                     +{{ formatNumber(building.baseIncome) }}/{{ building.type === 'global' ? 'всего' : 'сек' }}
                 </p>
                 
@@ -82,7 +70,7 @@
         <h2 class="section-title">⚡ Модификаторы (бустеры)</h2>
         
         <div class="modifiers-grid">
-            <div v-for="(modifier, index) in availableModifiers" :key="modifier.id" 
+            <div v-for="(modifier, index) in modifiers" :key="modifier.id" 
                  class="modifier-card"
                  :class="{ 'affordable': canAfford(modifier), 'purchased': modifier.purchased }"
                  @click="buyModifier(index)">
@@ -102,8 +90,8 @@
         <section class="city-section">
             <h2 class="section-title">🌆 Ваш город</h2>
             
-            <div class="city-visual" ref="cityContainer">
-                <div v-for="(icon, index) in cityIcons" :key="index" class="city-building" :style="{ animationDelay: (index * 0.1) + 's' }">
+            <div class="city-visual">
+                <div v-for="(icon, index) in cityIcons" :key="index" class="city-building">
                     {{ icon }}
                 </div>
                 
@@ -116,14 +104,14 @@
             <!-- Прогресс уровня -->
             <div class="level-container">
                 <div class="level-badge">
-                    🏆 Уровень города: {{ cityLevel }}
+                    🏆 Уровень города: {{ stats.cityLevel }}
                 </div>
                 
                 <div class="progress-container">
                     <div class="progress-bar-bg">
-                        <div class="progress-fill" :style="{ width: progressPercentage + '%' }"></div>
+                        <div class="progress-fill" :style="{ width: getProgressPercentage() + '%' }"></div>
                     </div>
-                    <p class="level-text">{{ formatNumber(stats.money) }} / {{ getLevelThreshold() }}</p>
+                    <p class="level-text">{{ formatNumber(stats.money) }} / {{ formatNumber(getLevelThreshold()) }}</p>
                 </div>
             </div>
         </section>

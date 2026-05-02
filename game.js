@@ -36,6 +36,18 @@ createApp({
         let autoSaveInterval;
         let gameLoopInterval;
 
+        // Текст интерфейса
+        const subtitleText = computed(() => {
+            return stats.value.cityLevel === 1 ? 'Постройте империю и станьте магнатом!' : `Уровень города: ${stats.value.cityLevel}`;
+        });
+
+        const clickHintText = computed(() => {
+            if (stats.value.incomePerSecond > 0) {
+                return 'Кликайте для быстрого заработка!';
+            }
+            return 'Нажимайте, чтобы заработать первые деньги';
+        });
+
         // Форматирование чисел
         function formatNumber(num) {
             if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
@@ -43,15 +55,37 @@ createApp({
             return Math.floor(num);
         }
 
+        // Получение иконки для статистики
+        function getStatIcon(key) {
+            const icons = { money: '💰', totalBuildings: '🏢', incomePerSecond: '💵', cityLevel: '🏆', clickValue: '⚡' };
+            return icons[key] || '?';
+        }
+
+        // Получение значения статистики
+        function getStatValue(key) {
+            if (key === 'money') return stats.value.money;
+            if (key === 'totalBuildings') return stats.value.totalBuildings;
+            if (key === 'incomePerSecond') return stats.value.incomePerSecond;
+            if (key === 'cityLevel') return stats.value.cityLevel;
+            if (key === 'clickValue') return stats.value.clickValue;
+            return 0;
+        }
+
+        // Получение label для статистики
+        function getStatLabel(key) {
+            const labels = { money: 'Деньги', totalBuildings: 'Здания', incomePerSecond: 'Доход/сек', cityLevel: 'Уровень', clickValue: 'Клик' };
+            return labels[key] || key;
+        }
+
         // Расчет стоимости здания
-        function getCost(building) {
+        function getBuildingCost(building) {
             return Math.floor(building.baseCost * Math.pow(1.15, building.count));
         }
 
         // Проверка доступности покупки
         function canAfford(item) {
-            if (item.purchased) return false;
-            const cost = typeof item.cost !== 'undefined' ? item.cost : getCost(item);
+            if (item.purchased && item.id !== undefined) return false;
+            const cost = typeof item.cost !== 'undefined' ? item.cost : getBuildingCost(item);
             return stats.value.money >= cost;
         }
 
@@ -101,7 +135,7 @@ createApp({
             particle.style.top = y + 'px';
             document.body.appendChild(particle);
             
-            const angle = (Math.PI * 2 * i) / 8;
+            const angle = (Math.PI * 2 * Math.random());
             const velocity = 50 + Math.random() * 100;
             const vx = Math.cos(angle) * velocity;
             const vy = Math.sin(angle) * velocity;
@@ -129,7 +163,7 @@ createApp({
         // Покупка здания
         function buyBuilding(index) {
             const building = buildings.value[index];
-            const cost = getCost(building);
+            const cost = getBuildingCost(building);
             
             if (stats.value.money >= cost) {
                 stats.value.money -= cost;
@@ -204,7 +238,6 @@ createApp({
             if (cityIcons.value.length < 20) {
                 cityIcons.value.push(icon);
             } else {
-                // Удаляем старую, если лимит превышен
                 cityIcons.value.shift();
                 cityIcons.value.push(icon);
             }
@@ -216,11 +249,17 @@ createApp({
         }
 
         // Вычисление прогресса
-        const progressPercentage = computed(() => {
+        function getProgressPercentage() {
             const current = stats.value.money % (stats.value.cityLevel * 10000);
             const threshold = getLevelThreshold();
             return Math.min(100, Math.max(0, (current / threshold) * 100));
-        });
+        }
+
+        // Цвет дохода в зависимости от типа
+        function getIncomeColor(type) {
+            if (type === 'global') return '#006400';
+            return '#28a745';
+        }
 
         // Обновление UI
         function updateUI() {
@@ -234,7 +273,7 @@ createApp({
                 const buildingId = card.dataset.id;
                 const building = buildings.value.find(b => b.id === buildingId);
                 if (building) {
-                    const cost = getCost(building);
+                    const cost = getBuildingCost(building);
                     if (stats.value.money >= cost && !card.classList.contains('purchased')) {
                         card.classList.add('affordable');
                     } else {
@@ -371,14 +410,21 @@ createApp({
             cityIcons,
             isAnimating,
             saveStatus,
-            progressPercentage,
+            subtitleText,
+            clickHintText,
             formatNumber,
-            getCost,
+            getBuildingCost,
             canAfford,
             handleClick,
             buyBuilding,
             buyModifier,
-            resetGame
+            resetGame,
+            getLevelThreshold,
+            getProgressPercentage,
+            getStatIcon,
+            getStatValue,
+            getStatLabel,
+            getIncomeColor
         };
     }
 }).mount('#app');
