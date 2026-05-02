@@ -37,6 +37,13 @@ createApp({
             { id: 'shop_upgrade', name: 'Розничная сеть', description: '+150% доход от магазинов', icon: '🛍️', cost: 1500, purchased: false }
         ]);
 
+            // Добавить события и достижения (achievement system)
+        const achievements = [
+            { id: 'first_building', name: 'Первый шаг', reward: 100 },
+            { id: 'millionaire', name: 'Миллионер', reward: 1000, condition: money >= 1000000 },
+            { id: 'city_master', name: 'Мастер города', reward: 5000, condition: buildings.count > 50 }
+        ];
+
         const cityIcons = ref([]);
         const isAnimating = ref(false);
         const saveStatus = ref('💾 Автосохранение включено');
