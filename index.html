@@ -18,8 +18,23 @@
     <div id="app" class="game-container">
         <!-- Шапка с заголовком -->
         <header class="header">
-            <h1 class="title">🏙️ Экономический Кликер</h1>
-            <p class="subtitle">{{ subtitleText }}</p>
+            <div class="header-top">
+                <div class="title-section">
+                    <h1 class="title">🏙️ Экономический Кликер</h1>
+                    <p class="subtitle">{{ subtitleText }}</p>
+                </div>
+                <div class="header-controls">
+                    <button class="control-btn" @click="toggleTheme" title="Переключить тему">
+                        {{ isDarkTheme ? '☀️' : '🌙' }}
+                    </button>
+                    <button class="control-btn" @click="showHelp" title="Справка">
+                        ℹ️
+                    </button>
+                    <button class="control-btn" @click="showLeaderboard" title="Таблица лидеров">
+                        🏆
+                    </button>
+                </div>
+            </div>
             
             <!-- Статистика -->
             <div class="stats-bar">
@@ -27,6 +42,27 @@
                     <div class="stat-icon">{{ getStatIcon(key) }}</div>
                     <div class="stat-value">{{ formatNumber(getStatValue(key)) }}</div>
                     <div class="stat-label">{{ getStatLabel(key) }}</div>
+                </div>
+            </div>
+
+            <!-- Престиж информация -->
+            <div v-if="prestige.level > 0" class="prestige-info">
+                <span>✨ Престиж: {{ prestige.level }} | Множитель: {{ (prestige.multiplier).toFixed(2) }}x</span>
+            </div>
+
+            <!-- Достижения -->
+            <div v-if="achievements.length > 0" class="achievements-preview">
+                <span class="achievement-count">🎯 Достижений: {{ unlockedAchievements }}/{{ achievements.length }}</span>
+                <div class="achievement-icons">
+                    <div v-for="achievement in achievements.slice(0, 5)" :key="achievement.id" 
+                         class="achievement-badge" 
+                         :class="{ 'unlocked': isAchievementUnlocked(achievement.id) }"
+                         :title="achievement.name">
+                        {{ achievement.icon }}
+                    </div>
+                    <div v-if="achievements.length > 5" class="achievement-more">
+                        +{{ achievements.length - 5 }}
+                    </div>
                 </div>
             </div>
         </header>
@@ -38,6 +74,7 @@
                 <span class="bonus-text">+{{ formatNumber(stats.clickValue) }}</span>
             </button>
             <p class="hint">{{ clickHintText }}</p>
+            <p class="keyboard-hint">💡 Пробел для клика | Цифры 1-9 для зданий</p>
         </section>
 
         <!-- Сетка зданий -->
@@ -51,13 +88,15 @@
                 
                 <div class="card-header">
                     <div class="count-badge">{{ building.count }}</div>
+                    <div v-if="index < 9" class="keyboard-shortcut">{{ index + 1 }}</div>
                 </div>
                 
                 <div class="building-icon">{{ building.icon }}</div>
                 <h3 class="building-name">{{ building.name }}</h3>
+                <p class="building-description">{{ building.description }}</p>
                 <p class="building-cost">💰 {{ formatNumber(getBuildingCost(building)) }}</p>
                 <p class="building-income" :style="{ color: getIncomeColor(building.type) }">
-                    +{{ formatNumber(building.baseIncome) }}/{{ building.type === 'global' ? 'всего' : 'сек' }}
+                    +{{ formatNumber(building.baseIncome) }}/сек
                 </p>
                 
                 <div v-if="building.count > 0" class="owned-badge">
@@ -156,16 +195,64 @@
             </div>
         </section>
 
-        <!-- Кнопка сброса -->
+        <!-- Достижения -->
+        <section class="achievements-section">
+            <h2 class="section-title">🎯 Достижения</h2>
+            <div class="achievements-grid">
+                <div v-for="achievement in achievements" :key="achievement.id"
+                     class="achievement-item"
+                     :class="{ 'unlocked': isAchievementUnlocked(achievement.id) }">
+                    <div class="achievement-icon">{{ achievement.icon }}</div>
+                    <div class="achievement-details">
+                        <div class="achievement-title">{{ achievement.name }}</div>
+                        <div class="achievement-description">{{ achievement.description }}</div>
+                        <div v-if="isAchievementUnlocked(achievement.id)" class="achievement-reward">
+                            ✅ +{{ achievement.reward }} 💰
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Престиж секция -->
+        <section class="prestige-section">
+            <h2 class="section-title">✨ Система Престижа</h2>
+            <div class="prestige-info-box">
+                <p>Текущий престиж уровень: <strong>{{ prestige.level }}</strong></p>
+                <p>Множитель: <strong>{{ (prestige.multiplier).toFixed(2) }}x</strong></p>
+                <p>Требуемая сумма для перезагрузки: <strong>{{ formatNumber(GAME_CONFIG.prestige.threshold) }}</strong></p>
+                <p v-if="stats.money >= GAME_CONFIG.prestige.threshold" class="prestige-ready">
+                    🎉 Вы готовы к перезагрузке!
+                </p>
+                <button v-if="stats.money >= GAME_CONFIG.prestige.threshold && prestige.level < GAME_CONFIG.prestige.maxLevel"
+                        @click="activatePrestige" class="prestige-button">
+                    ⭐ Активировать Престиж
+                </button>
+            </div>
+        </section>
+
+        <!-- Кнопки управления -->
         <footer class="footer">
-            <button @click="resetGame" class="reset-button">
-                🔄 Сбросить прогресс
-            </button>
+            <div class="footer-buttons">
+                <button @click="exportSave" class="footer-button" title="Экспортировать сохранение">
+                    📥 Экспорт
+                </button>
+                <button @click="importSave" class="footer-button" title="Импортировать сохранение">
+                    📤 Импорт
+                </button>
+                <button @click="resetGame" class="footer-button reset-button" title="Сбросить игру">
+                    🔄 Сброс
+                </button>
+            </div>
             <p class="save-status">{{ saveStatus }}</p>
         </footer>
     </div>
 
-    <!-- Подключение JS -->
+    <!-- Скрытое поле для импорта файла -->
+    <input type="file" id="saveFileInput" accept=".json" style="display: none;">
+
+    <!-- Подключение конфига и JS -->
+    <script src="config.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
