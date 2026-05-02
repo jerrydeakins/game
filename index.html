@@ -69,8 +69,51 @@
         <!-- Секция модификаторов -->
         <h2 class="section-title">⚡ Модификаторы (бустеры)</h2>
         
+        <!-- Блок клика -->
+        <h3 style="color: var(--gold); margin-top: 20px; font-size: 1.3em;">🖱️ Усиление клика</h3>
         <div class="modifiers-grid">
             <div v-for="(modifier, index) in modifiers" :key="modifier.id" 
+                 v-if="isClickModifier(modifier)"
+                 class="modifier-card"
+                 :class="{ 'affordable': canAfford(modifier), 'purchased': modifier.purchased }"
+                 @click="buyModifier(index)">
+                
+                <div class="modifier-icon">{{ modifier.icon }}</div>
+                <h3 class="modifier-name">{{ modifier.name }}</h3>
+                <p class="modifier-desc">{{ modifier.description }}</p>
+                <p class="modifier-cost">💰 {{ formatNumber(modifier.cost) }}</p>
+                
+                <div v-if="modifier.purchased" class="purchased-badge">
+                    ✅ Активировано
+                </div>
+            </div>
+        </div>
+        
+        <!-- Блок общего дохода -->
+        <h3 style="color: var(--gold); margin-top: 20px; font-size: 1.3em;">📈 Увеличение пассивного дохода</h3>
+        <div class="modifiers-grid">
+            <div v-for="(modifier, index) in modifiers" :key="modifier.id"
+                 v-if="isGeneralModifier(modifier)"
+                 class="modifier-card"
+                 :class="{ 'affordable': canAfford(modifier), 'purchased': modifier.purchased }"
+                 @click="buyModifier(index)">
+                
+                <div class="modifier-icon">{{ modifier.icon }}</div>
+                <h3 class="modifier-name">{{ modifier.name }}</h3>
+                <p class="modifier-desc">{{ modifier.description }}</p>
+                <p class="modifier-cost">💰 {{ formatNumber(modifier.cost) }}</p>
+                
+                <div v-if="modifier.purchased" class="purchased-badge">
+                    ✅ Активировано
+                </div>
+            </div>
+        </div>
+        
+        <!-- Блок специализации -->
+        <h3 style="color: var(--gold); margin-top: 20px; font-size: 1.3em;">🏢 Специализированные улучшения</h3>
+        <div class="modifiers-grid">
+            <div v-for="(modifier, index) in modifiers" :key="modifier.id"
+                 v-if="isSpecialtyModifier(modifier)"
                  class="modifier-card"
                  :class="{ 'affordable': canAfford(modifier), 'purchased': modifier.purchased }"
                  @click="buyModifier(index)">

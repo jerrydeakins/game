@@ -13,8 +13,8 @@ createApp({
         });
 
         const buildings = ref([
-            { id: 'stall', name: 'Ларек с лимонадом', icon: '🍋', baseCost: 15, baseIncome: 0.5, count: 0 },
-            { id: 'bakery', name: 'Пекарня', icon: '🥖', baseCost: 100, baseIncome: 3, count: 0 },
+            { id: 'stall', name: 'Ларек с лимонадом', icon: '🍋', baseCost: 15, baseIncome: 2.0, count: 0 }, // Увеличено до 2$/сек для старта
+            { id: 'bakery', name: 'Пекарня', icon: '🥖', baseCost: 100, baseIncome: 8, count: 0 }, // Немного увеличен доход
             { id: 'shop', name: 'Магазин', icon: '🏪', baseCost: 500, baseIncome: 8, count: 0 },
             { id: 'office', name: 'Офисное здание', icon: '🏢', baseCost: 2000, baseIncome: 15, count: 0 },
             { id: 'factory', name: 'Фабрика', icon: '🏭', baseCost: 8000, baseIncome: 40, count: 0 },
@@ -22,9 +22,17 @@ createApp({
         ]);
 
         const modifiers = ref([
+            // Модификаторы клика (прогрессивные)
+            { id: 'stronger_fingers', name: 'Сильные пальцы', description: '+$1 к доходу за клик', icon: '💪', cost: 50, purchased: false },
+            { id: 'power_grip', name: 'Мощный хват', description: '+$5 к доходу за клик', icon: '🔥', cost: 300, purchased: false },
+            { id: 'golden_hand', name: 'Золотая рука', description: '+$20 к доходу за клик', icon: '✨', cost: 1500, purchased: false },
+            
+            // Модификаторы общего дохода
             { id: 'efficiency_boost', name: 'Эффективность труда', description: '+20% ко всему доходу', icon: '⚡', cost: 500, purchased: false },
             { id: 'marketing', name: 'Маркетинг', description: '+30% ко всему доходу', icon: '📢', cost: 2000, purchased: false },
             { id: 'technology', name: 'Технологии', description: '+50% ко всему доходу', icon: '💻', cost: 10000, purchased: false },
+            
+            // Специализированные бустеры
             { id: 'bakery_boost', name: 'Свежая выпечка', description: '+100% доход от пекарни', icon: '🥐', cost: 300, purchased: false },
             { id: 'shop_upgrade', name: 'Розничная сеть', description: '+150% доход от магазинов', icon: '🛍️', cost: 1500, purchased: false }
         ]);
@@ -87,6 +95,19 @@ createApp({
             if (item.purchased && item.id !== undefined) return false;
             const cost = typeof item.cost !== 'undefined' ? item.cost : getBuildingCost(item);
             return stats.value.money >= cost;
+        }
+
+        // Фильтрация модификаторов по типу
+        function isClickModifier(modifier) {
+            return ['stronger_fingers', 'power_grip', 'golden_hand'].includes(modifier.id);
+        }
+
+        function isGeneralModifier(modifier) {
+            return ['efficiency_boost', 'marketing', 'technology'].includes(modifier.id);
+        }
+
+        function isSpecialtyModifier(modifier) {
+            return ['bakery_boost', 'shop_upgrade'].includes(modifier.id);
         }
 
         // Обработка клика по главной кнопке
@@ -230,7 +251,22 @@ createApp({
             });
             
             stats.value.incomePerSecond = baseIncome * multiplier;
-            stats.value.clickValue = Math.floor(1 + stats.value.incomePerSecond * 0.1);
+            
+            // Расчет силы клика: база + бонусы от модификаторов клика + процент от дохода
+            let clickBase = 1; // Базовый клик
+            
+            // Добавляем бонусы от купленных модификаторов клика
+            const clickBoosts = modifiers.value.filter(m => m.purchased && ['stronger_fingers', 'power_grip', 'golden_hand'].includes(m.id));
+            clickBoosts.forEach(boost => {
+                if (boost.id === 'stronger_fingers') clickBase += 1;
+                if (boost.id === 'power_grip') clickBase += 5;
+                if (boost.id === 'golden_hand') clickBase += 20;
+            });
+            
+            // Процент от пассивного дохода (чтобы клик рос вместе с бизнесом)
+            const incomeBonus = Math.floor(stats.value.incomePerSecond * 0.1);
+            
+            stats.value.clickValue = clickBase + incomeBonus;
         }
 
         // Добавление иконки в город
@@ -424,7 +460,10 @@ createApp({
             getStatIcon,
             getStatValue,
             getStatLabel,
-            getIncomeColor
+            getIncomeColor,
+            isClickModifier,
+            isGeneralModifier,
+            isSpecialtyModifier
         };
     }
 }).mount('#app');
