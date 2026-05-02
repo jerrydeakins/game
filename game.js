@@ -23,9 +23,9 @@ createApp({
 
         const modifiers = ref([
             // Модификаторы клика (прогрессивные)
-            { id: 'stronger_fingers', name: 'Сильные пальцы', description: '+$1 к доходу за клик', icon: '💪', cost: 50, purchased: false },
-            { id: 'power_grip', name: 'Мощный хват', description: '+$5 к доходу за клик', icon: '🔥', cost: 300, purchased: false },
-            { id: 'golden_hand', name: 'Золотая рука', description: '+$20 к доходу за клик', icon: '✨', cost: 1500, purchased: false },
+            { id: 'click_boost_1', name: 'Сильные пальцы', description: '+$1 к доходу за клик', icon: '💪', cost: 50, purchased: false },
+            { id: 'click_boost_2', name: 'Мощный хват', description: '+$5 к доходу за клик', icon: '🔥', cost: 300, purchased: false },
+            { id: 'click_boost_3', name: 'Золотая рука', description: '+$20 к доходу за клик', icon: '✨', cost: 1500, purchased: false },
             
             // Модификаторы общего дохода
             { id: 'efficiency_boost', name: 'Эффективность труда', description: '+20% ко всему доходу', icon: '⚡', cost: 500, purchased: false },
@@ -97,18 +97,9 @@ createApp({
             return stats.value.money >= cost;
         }
 
-        // Фильтрация модификаторов по типу
-        function isClickModifier(modifier) {
-            return ['stronger_fingers', 'power_grip', 'golden_hand'].includes(modifier.id);
-        }
 
-        function isGeneralModifier(modifier) {
-            return ['efficiency_boost', 'marketing', 'technology'].includes(modifier.id);
-        }
 
-        function isSpecialtyModifier(modifier) {
-            return ['bakery_boost', 'shop_upgrade'].includes(modifier.id);
-        }
+
 
         // Обработка клика по главной кнопке
         function handleClick() {
@@ -200,11 +191,11 @@ createApp({
             }
         }
 
-        // Покупка модификатора
+        // Покупка модификатора по индексу
         function buyModifier(index) {
             const modifier = modifiers.value[index];
             
-            if (modifier.purchased) return;
+            if (!modifier || modifier.purchased) return;
             
             if (stats.value.money >= modifier.cost) {
                 stats.value.money -= modifier.cost;
@@ -256,11 +247,11 @@ createApp({
             let clickBase = 1; // Базовый клик
             
             // Добавляем бонусы от купленных модификаторов клика
-            const clickBoosts = modifiers.value.filter(m => m.purchased && ['stronger_fingers', 'power_grip', 'golden_hand'].includes(m.id));
+            const clickBoosts = modifiers.value.filter(m => m.purchased && ['click_boost_1', 'click_boost_2', 'click_boost_3'].includes(m.id));
             clickBoosts.forEach(boost => {
-                if (boost.id === 'stronger_fingers') clickBase += 1;
-                if (boost.id === 'power_grip') clickBase += 5;
-                if (boost.id === 'golden_hand') clickBase += 20;
+                if (boost.id === 'click_boost_1') clickBase += 1;
+                if (boost.id === 'click_boost_2') clickBase += 5;
+                if (boost.id === 'click_boost_3') clickBase += 20;
             });
             
             // Процент от пассивного дохода (чтобы клик рос вместе с бизнесом)
@@ -371,13 +362,63 @@ createApp({
                     
                     stats.value = { ...stats.value, ...gameData.stats };
                     buildings.value = gameData.buildings || buildings.value;
-                    modifiers.value = gameData.modifiers || modifiers.value;
                     cityIcons.value = gameData.cityIcons || [];
+                    
+                    // Обновляем модификаторы: сохраняем статус покупки для существующих и добавляем новые
+                    if (gameData.modifiers && Array.isArray(gameData.modifiers)) {
+                        const savedModifiersMap = {};
+                        gameData.modifiers.forEach(m => {
+                            if (m.id) savedModifiersMap[m.id] = m.purchased;
+                        });
+                        
+                        // Обновляем существующие модификаторы
+                        modifiers.value.forEach(modifier => {
+                            if (savedModifiersMap[modifier.id] !== undefined) {
+                                modifier.purchased = savedModifiersMap[modifier.id];
+                            }
+                        });
+                        
+                        // Добавляем недостающие модификаторы только если их нет в текущем массиве
+                        const existingIds = modifiers.value.map(m => m.id);
+                        if (!existingIds.includes('click_boost_1')) {
+                            modifiers.value.push({ id: 'click_boost_1', name: 'Сильные пальцы', description: '+$1 к доходу за клик', icon: '💪', cost: 50, purchased: false });
+                        }
+                        if (!existingIds.includes('click_boost_2')) {
+                            modifiers.value.push({ id: 'click_boost_2', name: 'Мощный хват', description: '+$5 к доходу за клик', icon: '🔥', cost: 300, purchased: false });
+                        }
+                        if (!existingIds.includes('click_boost_3')) {
+                            modifiers.value.push({ id: 'click_boost_3', name: 'Золотая рука', description: '+$20 к доходу за клик', icon: '✨', cost: 1500, purchased: false });
+                        }
+                    } else {
+                        // Если сохранения нет или оно повреждено, используем дефолтные значения
+                        modifiers.value = [
+                            { id: 'click_boost_1', name: 'Сильные пальцы', description: '+$1 к доходу за клик', icon: '💪', cost: 50, purchased: false },
+                            { id: 'click_boost_2', name: 'Мощный хват', description: '+$5 к доходу за клик', icon: '🔥', cost: 300, purchased: false },
+                            { id: 'click_boost_3', name: 'Золотая рука', description: '+$20 к доходу за клик', icon: '✨', cost: 1500, purchased: false },
+                            { id: 'efficiency_boost', name: 'Эффективность труда', description: '+20% ко всему доходу', icon: '⚡', cost: 500, purchased: false },
+                            { id: 'marketing', name: 'Маркетинг', description: '+30% ко всему доходу', icon: '📢', cost: 2000, purchased: false },
+                            { id: 'technology', name: 'Технологии', description: '+50% ко всему доходу', icon: '💻', cost: 10000, purchased: false },
+                            { id: 'bakery_boost', name: 'Свежая выпечка', description: '+100% доход от пекарни', icon: '🥐', cost: 300, purchased: false },
+                            { id: 'shop_upgrade', name: 'Розничная сеть', description: '+150% доход от магазинов', icon: '🛍️', cost: 1500, purchased: false }
+                        ];
+                    }
                     
                     showNotification('Игра загружена! Добро пожаловать назад!', 'success');
                 } catch (e) {
                     console.error('Ошибка загрузки сохранения:', e);
                 }
+            } else {
+                // Если сохранения нет, используем дефолтные значения
+                modifiers.value = [
+                    { id: 'click_boost_1', name: 'Сильные пальцы', description: '+$1 к доходу за клик', icon: '💪', cost: 50, purchased: false },
+                    { id: 'click_boost_2', name: 'Мощный хват', description: '+$5 к доходу за клик', icon: '🔥', cost: 300, purchased: false },
+                    { id: 'click_boost_3', name: 'Золотая рука', description: '+$20 к доходу за клик', icon: '✨', cost: 1500, purchased: false },
+                    { id: 'efficiency_boost', name: 'Эффективность труда', description: '+20% ко всему доходу', icon: '⚡', cost: 500, purchased: false },
+                    { id: 'marketing', name: 'Маркетинг', description: '+30% ко всему доходу', icon: '📢', cost: 2000, purchased: false },
+                    { id: 'technology', name: 'Технологии', description: '+50% ко всему доходу', icon: '💻', cost: 10000, purchased: false },
+                    { id: 'bakery_boost', name: 'Свежая выпечка', description: '+100% доход от пекарни', icon: '🥐', cost: 300, purchased: false },
+                    { id: 'shop_upgrade', name: 'Розничная сеть', description: '+150% доход от магазинов', icon: '🛍️', cost: 1500, purchased: false }
+                ];
             }
         }
 
@@ -426,6 +467,10 @@ createApp({
         onMounted(() => {
             loadGame();
             
+            // Отладка: проверяем модификаторы клика
+            console.log('Все модификаторы:', modifiers.value.map(m => ({ id: m.id, name: m.name, purchased: m.purchased })));
+            console.log('Количество модификаторов:', modifiers.value.length);
+            
             // Автосохранение каждые 5 секунд
             autoSaveInterval = setInterval(saveGame, 5000);
             
@@ -439,10 +484,42 @@ createApp({
             if (gameLoopInterval) clearInterval(gameLoopInterval);
         });
 
+        // Вычисляемые свойства для фильтрации модификаторов
+        const clickModifiers = computed(() => 
+            modifiers.value.filter(m => ['click_boost_1', 'click_boost_2', 'click_boost_3'].includes(m.id))
+        );
+
+        const generalModifiers = computed(() => 
+            modifiers.value.filter(m => ['efficiency_boost', 'marketing', 'technology'].includes(m.id))
+        );
+
+        const specialtyModifiers = computed(() => 
+            modifiers.value.filter(m => ['bakery_boost', 'shop_upgrade'].includes(m.id))
+        );
+
+        // Методы для проверки типа модификатора (для использования в template)
+        function isClickModifier(modifier) {
+            if (!modifier || !modifier.id) return false;
+            return ['click_boost_1', 'click_boost_2', 'click_boost_3'].includes(modifier.id);
+        }
+
+        function isGeneralModifier(modifier) {
+            if (!modifier || !modifier.id) return false;
+            return ['efficiency_boost', 'marketing', 'technology'].includes(modifier.id);
+        }
+
+        function isSpecialtyModifier(modifier) {
+            if (!modifier || !modifier.id) return false;
+            return ['bakery_boost', 'shop_upgrade'].includes(modifier.id);
+        }
+
         return {
             stats,
             buildings,
             modifiers,
+            clickModifiers,
+            generalModifiers,
+            specialtyModifiers,
             cityIcons,
             isAnimating,
             saveStatus,

@@ -72,11 +72,10 @@
         <!-- Блок клика -->
         <h3 style="color: var(--gold); margin-top: 20px; font-size: 1.3em;">🖱️ Усиление клика</h3>
         <div class="modifiers-grid">
-            <div v-for="(modifier, index) in modifiers" :key="modifier.id" 
-                 v-if="isClickModifier(modifier)"
+            <div v-for="modifier in clickModifiers" :key="modifier.id" 
                  class="modifier-card"
                  :class="{ 'affordable': canAfford(modifier), 'purchased': modifier.purchased }"
-                 @click="buyModifier(index)">
+                 @click="buyModifier(modifiers.indexOf(modifier))">
                 
                 <div class="modifier-icon">{{ modifier.icon }}</div>
                 <h3 class="modifier-name">{{ modifier.name }}</h3>
@@ -92,11 +91,10 @@
         <!-- Блок общего дохода -->
         <h3 style="color: var(--gold); margin-top: 20px; font-size: 1.3em;">📈 Увеличение пассивного дохода</h3>
         <div class="modifiers-grid">
-            <div v-for="(modifier, index) in modifiers" :key="modifier.id"
-                 v-if="isGeneralModifier(modifier)"
+            <div v-for="modifier in generalModifiers" :key="modifier.id"
                  class="modifier-card"
                  :class="{ 'affordable': canAfford(modifier), 'purchased': modifier.purchased }"
-                 @click="buyModifier(index)">
+                 @click="buyModifier(modifiers.indexOf(modifier))">
                 
                 <div class="modifier-icon">{{ modifier.icon }}</div>
                 <h3 class="modifier-name">{{ modifier.name }}</h3>
@@ -112,11 +110,10 @@
         <!-- Блок специализации -->
         <h3 style="color: var(--gold); margin-top: 20px; font-size: 1.3em;">🏢 Специализированные улучшения</h3>
         <div class="modifiers-grid">
-            <div v-for="(modifier, index) in modifiers" :key="modifier.id"
-                 v-if="isSpecialtyModifier(modifier)"
+            <div v-for="modifier in specialtyModifiers" :key="modifier.id"
                  class="modifier-card"
                  :class="{ 'affordable': canAfford(modifier), 'purchased': modifier.purchased }"
-                 @click="buyModifier(index)">
+                 @click="buyModifier(modifiers.indexOf(modifier))">
                 
                 <div class="modifier-icon">{{ modifier.icon }}</div>
                 <h3 class="modifier-name">{{ modifier.name }}</h3>
