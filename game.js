@@ -47,6 +47,13 @@ createApp({
             { id: 'city_master', name: 'Мастер города', reward: 5000, condition: buildings.count > 50 }
         ];
 
+            // Система "Перезагрузка с наследством" (prestige system)
+        const prestige = ref({
+            level: 0,
+            multiplier: 1.1,
+            threshold: 10000000  // сумма для перезагрузки
+        });
+
         const cityIcons = ref([]);
         const isAnimating = ref(false);
         const saveStatus = ref('💾 Автосохранение включено');
