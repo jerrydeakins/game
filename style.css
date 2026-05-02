@@ -1,0 +1,530 @@
+/* Основные переменные и сброс */
+:root {
+    --monopoly-green: #006400;
+    --monopoly-dark-green: #003300;
+    --monopoly-light-green: #98FB98;
+    --monopoly-brown: #8B4513;
+    --monopoly-blue: #0000FF;
+    --monopoly-red: #DC143C;
+    --gold: #FFD700;
+    --gold-gradient: linear-gradient(135deg, #FFD700, #FFA500);
+    --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    --transition-speed: 0.3s;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, var(--monopoly-green), var(--monopoly-dark-green));
+    color: #fff;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Контейнер игры */
+.game-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Шапка */
+.header {
+    text-align: center;
+    animation: fadeInDown 0.8s ease-out;
+    margin-bottom: 30px;
+}
+
+.title {
+    color: var(--gold);
+    font-size: 3em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5), 
+                 0 0 20px rgba(255, 215, 0, 0.3);
+    margin-bottom: 10px;
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+.subtitle {
+    color: var(--monopoly-light-green);
+    font-size: 1.3em;
+    opacity: 0.9;
+}
+
+/* Статистика */
+.stats-bar {
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(10px);
+    border-radius: 15px;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 30px;
+    box-shadow: var(--card-shadow);
+}
+
+.stat-item {
+    text-align: center;
+    padding: 15px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+}
+
+.stat-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.stat-icon {
+    font-size: 2em;
+    margin-bottom: 8px;
+}
+
+.stat-value {
+    font-size: 1.8em;
+    font-weight: 700;
+    color: var(--gold);
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.stat-label {
+    color: #ccc;
+    font-size: 0.9em;
+    margin-top: 5px;
+}
+
+/* Секция клика */
+.click-section {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 40px;
+    text-align: center;
+    margin: 30px auto;
+    max-width: 600px;
+    backdrop-filter: blur(10px);
+    box-shadow: var(--card-shadow);
+}
+
+.main-button {
+    background: var(--gold-gradient);
+    border: none;
+    border-radius: 50%;
+    width: 200px;
+    height: 200px;
+    font-size: 1.8em;
+    font-weight: 700;
+    color: var(--monopoly-dark-green);
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 
+                inset 0 -8px 20px rgba(0, 0, 0, 0.3);
+    transition: all var(--transition-speed) ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.main-button:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5), 
+                inset 0 -8px 20px rgba(0, 0, 0, 0.3);
+}
+
+.main-button:active:not(:disabled) {
+    transform: scale(0.95);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4), 
+                inset 0 -2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.main-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.main-button::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.4), transparent);
+    transform: translate(-50%, -50%);
+}
+
+.button-text {
+    display: block;
+}
+
+.bonus-text {
+    font-size: 1em;
+    display: block;
+    margin-top: 5px;
+    opacity: 0.8;
+}
+
+.hint {
+    color: var(--monopoly-light-green);
+    font-size: 1.1em;
+    margin-top: 20px;
+    opacity: 0.9;
+}
+
+/* Секции */
+.section-title {
+    color: var(--gold);
+    text-align: center;
+    font-size: 2em;
+    margin: 50px 0 30px;
+    position: relative;
+    padding-bottom: 15px;
+}
+
+.section-title::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 4px;
+    background: var(--gold-gradient);
+    border-radius: 2px;
+}
+
+/* Сетка зданий */
+.buildings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.building-card {
+    background: rgba(255, 255, 255, 0.95);
+    color: #333;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: var(--card-shadow);
+    transition: all var(--transition-speed) ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.building-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.4);
+}
+
+.building-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(90deg, var(--monopoly-brown), var(--monopoly-blue));
+}
+
+.building-card.affordable:hover {
+    cursor: pointer;
+    border: 2px solid var(--gold);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.count-badge {
+    background: var(--gold-gradient);
+    color: var(--monopoly-dark-green);
+    border-radius: 20px;
+    padding: 5px 15px;
+    font-weight: 700;
+    font-size: 1.1em;
+}
+
+.building-icon {
+    font-size: 3.5em;
+    margin-bottom: 15px;
+}
+
+.building-name {
+    font-weight: 700;
+    font-size: 1.3em;
+    color: var(--monopoly-dark-green);
+    margin-bottom: 8px;
+}
+
+.building-cost {
+    color: var(--monopoly-red);
+    font-weight: 600;
+    font-size: 1.1em;
+    margin-bottom: 5px;
+}
+
+.building-income {
+    font-size: 0.95em;
+    opacity: 0.85;
+    margin-top: 5px;
+}
+
+.owned-badge {
+    background: var(--monopoly-green);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    margin-top: 10px;
+    display: inline-block;
+}
+
+/* Сетка модификаторов */
+.modifiers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.modifier-card {
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: var(--card-shadow);
+    transition: all var(--transition-speed) ease;
+    position: relative;
+}
+
+.modifier-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.modifier-card.purchased {
+    opacity: 0.6;
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+}
+
+.modifier-icon {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+}
+
+.modifier-name {
+    font-weight: 700;
+    color: var(--monopoly-dark-green);
+    margin-bottom: 8px;
+}
+
+.modifier-desc {
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.modifier-cost {
+    color: var(--monopoly-red);
+    font-weight: 700;
+    font-size: 1em;
+}
+
+.purchased-badge {
+    background: #28a745;
+    color: white;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    margin-top: 10px;
+    display: inline-block;
+}
+
+/* Визуализация города */
+.city-section {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 20px;
+    padding: 30px;
+    margin-top: 50px;
+    backdrop-filter: blur(10px);
+}
+
+.city-visual {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    height: 250px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 15px;
+    padding: 30px;
+    position: relative;
+    overflow: hidden;
+}
+
+.city-building {
+    font-size: 3em;
+    margin: 0 8px;
+    animation: fadeInUp 0.6s ease-out forwards;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.empty-city {
+    color: #ccc;
+    text-align: center;
+    font-size: 1.1em;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.level-container {
+    margin-top: 25px;
+    text-align: center;
+}
+
+.level-badge {
+    background: var(--gold-gradient);
+    color: var(--monopoly-dark-green);
+    padding: 10px 25px;
+    border-radius: 25px;
+    font-weight: 700;
+    display: inline-block;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.progress-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.progress-bar-bg {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    height: 25px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.progress-fill {
+    background: var(--gold-gradient);
+    height: 100%;
+    transition: width 0.5s ease-out;
+    border-radius: 12px;
+}
+
+.level-text {
+    color: #ccc;
+    font-size: 0.9em;
+}
+
+/* Футер */
+.footer {
+    text-align: center;
+    margin-top: 60px;
+    padding-top: 30px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.reset-button {
+    background: var(--monopoly-red);
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-speed);
+}
+
+.reset-button:hover {
+    background: #c81e3a;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(220, 20, 60, 0.4);
+}
+
+.save-status {
+    color: var(--monopoly-light-green);
+    margin-top: 15px;
+    font-size: 0.9em;
+    opacity: 0.8;
+}
+
+/* Анимации */
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes glow {
+    from {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5), 
+                     0 0 10px rgba(255, 215, 0, 0.2);
+    }
+    to {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5), 
+                     0 0 30px rgba(255, 215, 0, 0.6);
+    }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .title {
+        font-size: 2em;
+    }
+    
+    .subtitle {
+        font-size: 1em;
+    }
+    
+    .stats-bar {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .section-title {
+        font-size: 1.5em;
+    }
+    
+    .city-building {
+        font-size: 2em;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-bar {
+        grid-template-columns: 1fr;
+    }
+    
+    .buildings-grid,
+    .modifiers-grid {
+        grid-template-columns: 1fr;
+    }
+}
