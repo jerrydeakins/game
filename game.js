@@ -1,7 +1,6 @@
-// Инициализация приложения Vue.js
 const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
 
-createApp({
+const app = createApp({
     setup() {
         // Состояние игры
         const stats = ref({
@@ -9,72 +8,71 @@ createApp({
             totalBuildings: 0,
             incomePerSecond: 0,
             cityLevel: 1,
-            clickValue: 1
+            clickValue: 1,
+            totalClicks: 0,
+            passiveIncome: 0
         });
 
-        const buildings = ref([
-            { id: 'stall', name: 'Ларек с лимонадом', icon: '🍋', baseCost: 15, baseIncome: 2.0, count: 0 }, // Увеличено до 2$/сек для старта
-            { id: 'bakery', name: 'Пекарня', icon: '🥖', baseCost: 100, baseIncome: 8, count: 0 }, // Немного увеличен доход
-            { id: 'shop', name: 'Магазин', icon: '🏪', baseCost: 500, baseIncome: 8, count: 0 },
-            { id: 'office', name: 'Офисное здание', icon: '🏢', baseCost: 2000, baseIncome: 15, count: 0 },
-            { id: 'factory', name: 'Фабрика', icon: '🏭', baseCost: 8000, baseIncome: 40, count: 0 },
-            { id: 'skyscraper', name: 'Небоскреб', icon: '🏙️', baseCost: 50000, baseIncome: 120, count: 0 },
-            { id: 'mall', name: 'Торговый центр', icon: '🛒', baseCost: 200000, baseIncome: 300 },
-            { id: 'bank', name: 'Банк', icon: '🏦', baseCost: 500000, baseIncome: 750 },
-            { id: 'tech_hub', name: 'Технопарк', icon: '🔬', baseCost: 1000000, baseIncome: 2000 }
-        ]);
-
-        const modifiers = ref([
-            // Модификаторы клика (прогрессивные)
-            { id: 'click_boost_1', name: 'Сильные пальцы', description: '+$1 к доходу за клик', icon: '💪', cost: 50, purchased: false },
-            { id: 'click_boost_2', name: 'Мощный хват', description: '+$5 к доходу за клик', icon: '🔥', cost: 300, purchased: false },
-            { id: 'click_boost_3', name: 'Золотая рука', description: '+$20 к доходу за клик', icon: '✨', cost: 1500, purchased: false },
-            
-            // Модификаторы общего дохода
-            { id: 'efficiency_boost', name: 'Эффективность труда', description: '+20% ко всему доходу', icon: '⚡', cost: 500, purchased: false },
-            { id: 'marketing', name: 'Маркетинг', description: '+30% ко всему доходу', icon: '📢', cost: 2000, purchased: false },
-            { id: 'technology', name: 'Технологии', description: '+50% ко всему доходу', icon: '💻', cost: 10000, purchased: false },
-            
-            // Специализированные бустеры
-            { id: 'bakery_boost', name: 'Свежая выпечка', description: '+100% доход от пекарни', icon: '🥐', cost: 300, purchased: false },
-            { id: 'shop_upgrade', name: 'Розничная сеть', description: '+150% доход от магазинов', icon: '🛍️', cost: 1500, purchased: false }
-        ]);
-
-            // Добавить события и достижения (achievement system)
-        const achievements = [
-            { id: 'first_building', name: 'Первый шаг', reward: 100 },
-            { id: 'millionaire', name: 'Миллионер', reward: 1000, condition: money >= 1000000 },
-            { id: 'city_master', name: 'Мастер города', reward: 5000, condition: buildings.count > 50 }
-        ];
-
-            // Система "Перезагрузка с наследством" (prestige system)
-        const prestige = ref({
-            level: 0,
-            multiplier: 1.1,
-            threshold: 10000000  // сумма для перезагрузки
-        });
-
+        const buildings = ref([]);
+        const modifiers = ref([]);
+        const achievements = ref([]);
+        const unlockedAchievements = ref([]);
+        const leaderboard = ref([]);
+        const prestige = ref({ level: 0, multiplier: 1 });
         const cityIcons = ref([]);
+        const isDarkTheme = ref(true);
         const isAnimating = ref(false);
         const saveStatus = ref('💾 Автосохранение включено');
         
         let autoSaveInterval;
         let gameLoopInterval;
 
+        // Инициализация данных из конфига
+        function initializeFromConfig() {
+            if (typeof GAME_CONFIG === 'undefined') {
+                console.error('GAME_CONFIG не загружен!');
+                return;
+            }
+
+            // Инициализация зданий
+            buildings.value = GAME_CONFIG.buildings.map(b => ({
+                ...b,
+                count: 0,
+                type: 'building'
+            }));
+
+            // Инициализация модификаторов
+            modifiers.value = [
+                ...GAME_CONFIG.modifiers.click,
+                ...GAME_CONFIG.modifiers.general,
+                ...GAME_CONFIG.modifiers.specialty
+            ].map(m => ({ ...m, purchased: false }));
+
+            // Инициализация достижений
+            achievements.value = GAME_CONFIG.achievements.map(a => ({ ...a }));
+
+            // Инициализация престижа
+            prestige.value = { level: 0, multiplier: 1 };
+        }
+
         // Текст интерфейса
         const subtitleText = computed(() => {
-            return stats.value.cityLevel === 1 ? 'Постройте империю и станьте магнатом!' : `Уровень города: ${stats.value.cityLevel}`;
+            if (prestige.value.level > 0) {
+                return `Престиж: ${prestige.value.level} | Множитель: ${prestige.value.multiplier.toFixed(2)}x`;
+            }
+            return 'Постройте империю и станьте магнатом!';
         });
 
         const clickHintText = computed(() => {
             if (stats.value.incomePerSecond > 0) {
-                return 'Кликайте для быстрого заработка!';
+                return `Пассивный доход: +${formatNumber(stats.value.incomePerSecond)}/сек`;
             }
             return 'Нажимайте, чтобы заработать первые деньги';
         });
 
         // Форматирование чисел
         function formatNumber(num) {
+            if (num >= 1000000000) return (num / 1000000000).toFixed(2) + 'B';
             if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
             if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
             return Math.floor(num);
@@ -88,12 +86,7 @@ createApp({
 
         // Получение значения статистики
         function getStatValue(key) {
-            if (key === 'money') return stats.value.money;
-            if (key === 'totalBuildings') return stats.value.totalBuildings;
-            if (key === 'incomePerSecond') return stats.value.incomePerSecond;
-            if (key === 'cityLevel') return stats.value.cityLevel;
-            if (key === 'clickValue') return stats.value.clickValue;
-            return 0;
+            return stats.value[key] || 0;
         }
 
         // Получение label для статистики
@@ -104,182 +97,153 @@ createApp({
 
         // Расчет стоимости здания
         function getBuildingCost(building) {
-            return Math.floor(building.baseCost * Math.pow(1.15, building.count));
+            let cost = building.baseCost * Math.pow(GAME_CONFIG.balance.buildingCostGrowth, building.count);
+            if (prestige.value.level > 0) {
+                cost = cost * prestige.value.multiplier;
+            }
+            return Math.floor(cost);
         }
 
         // Проверка доступности покупки
         function canAfford(item) {
-            if (item.purchased && item.id !== undefined) return false;
-            const cost = typeof item.cost !== 'undefined' ? item.cost : getBuildingCost(item);
+            if (item.purchased && item.id && !item.baseCost) return false;
+            const cost = item.baseCost ? getBuildingCost(item) : item.cost;
             return stats.value.money >= cost;
         }
-
-
-
-
 
         // Обработка клика по главной кнопке
         function handleClick() {
             isAnimating.value = true;
-            
-            // Добавляем деньги
             stats.value.money += stats.value.clickValue;
-            
-            // Создаем частицы (упрощенно)
+            stats.value.totalClicks++;
             createParticleEffect();
-            
-            // Обновляем UI
+            checkAchievements();
             updateStats();
-            
-            setTimeout(() => {
-                isAnimating.value = false;
-            }, 100);
+            setTimeout(() => { isAnimating.value = false; }, 100);
         }
 
         // Эффект частиц при клике
         function createParticleEffect() {
             const button = document.querySelector('.main-button');
             if (!button) return;
-            
             const rect = button.getBoundingClientRect();
             const centerX = rect.left + rect.width / 2;
             const centerY = rect.top + rect.height / 2;
-            
-            for (let i = 0; i < 8; i++) {
-                setTimeout(() => {
-                    createParticle(centerX, centerY);
-                }, i * 50);
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => createParticle(centerX, centerY), i * 30);
             }
         }
 
         function createParticle(x, y) {
             const particle = document.createElement('div');
-            particle.style.position = 'fixed';
-            particle.style.width = '12px';
-            particle.style.height = '12px';
-            particle.style.background = '#FFD700';
-            particle.style.borderRadius = '50%';
-            particle.style.pointerEvents = 'none';
-            particle.style.left = x + 'px';
-            particle.style.top = y + 'px';
+            particle.style.cssText = `position:fixed;width:12px;height:12px;background:#FFD700;border-radius:50%;pointer-events:none;left:${x}px;top:${y}px;z-index:9999;font-weight:bold;font-size:10px;line-height:12px;text-align:center;`;
+            particle.textContent = '+';
             document.body.appendChild(particle);
             
-            const angle = (Math.PI * 2 * Math.random());
+            const angle = Math.PI * 2 * Math.random();
             const velocity = 50 + Math.random() * 100;
             const vx = Math.cos(angle) * velocity;
             const vy = Math.sin(angle) * velocity;
             
             let opacity = 1;
-            function animateParticle() {
+            function animate() {
                 const currentX = parseFloat(particle.style.left);
                 const currentY = parseFloat(particle.style.top);
-                
                 particle.style.left = (currentX + vx / 60) + 'px';
                 particle.style.top = (currentY + vy / 60) + 'px';
                 opacity -= 0.03;
                 particle.style.opacity = opacity;
-                
-                if (opacity > 0) {
-                    requestAnimationFrame(animateParticle);
-                } else {
-                    particle.remove();
-                }
+                if (opacity > 0) requestAnimationFrame(animate);
+                else particle.remove();
             }
-            
-            animateParticle();
+            animate();
         }
 
         // Покупка здания
         function buyBuilding(index) {
             const building = buildings.value[index];
             const cost = getBuildingCost(building);
-            
             if (stats.value.money >= cost) {
                 stats.value.money -= cost;
                 building.count++;
-                
-                showNotification(`Вы построили ${building.name}!`);
+                showNotification(`🏗️ ${building.name} построено!`);
                 addCityIcon(building.icon);
-                
                 recalculateStats();
+                checkAchievements();
                 updateUI();
             } else {
-                showNotification('Недостаточно средств!', 'error');
+                showNotification('❌ Недостаточно средств!', 'error');
             }
         }
 
-        // Покупка модификатора по индексу
+        // Покупка модификатора
         function buyModifier(index) {
             const modifier = modifiers.value[index];
-            
             if (!modifier || modifier.purchased) return;
-            
             if (stats.value.money >= modifier.cost) {
                 stats.value.money -= modifier.cost;
                 modifier.purchased = true;
-                
-                showNotification(`${modifier.name} активирован!`);
-                
+                showNotification(`⚡ ${modifier.name} активирован!`);
                 recalculateStats();
+                checkAchievements();
                 updateUI();
             } else {
-                showNotification('Недостаточно средств!', 'error');
+                showNotification('❌ Недостаточно средств!', 'error');
             }
         }
 
         // Пересчет статистики
         function recalculateStats() {
-            let baseIncome = buildings.value.reduce((total, building) => 
-                total + (building.baseIncome * building.count), 0);
+            let baseIncome = buildings.value.reduce((total, building) => {
+                let buildingIncome = building.baseIncome * building.count;
+                
+                // Применяем специальные бустеры
+                const specialBoosts = {
+                    'bakery': 'bakery_boost',
+                    'shop': 'shop_upgrade',
+                    'factory': 'industrial_boom',
+                    'skyscraper': 'architectural_marvel'
+                };
+                
+                if (specialBoosts[building.id]) {
+                    const boost = modifiers.value.find(m => m.id === specialBoosts[building.id] && m.purchased);
+                    if (boost) {
+                        buildingIncome *= 2; // 100% бонус
+                    }
+                }
+                
+                return total + buildingIncome;
+            }, 0);
             
             // Применяем глобальные бустеры
-            const globalBoosts = modifiers.value.filter(m => m.purchased && ['efficiency_boost', 'marketing', 'technology'].includes(m.id));
             let multiplier = 1;
-            
-            globalBoosts.forEach(boost => {
-                if (boost.id === 'efficiency_boost') multiplier += 0.2;
-                if (boost.id === 'marketing') multiplier += 0.3;
-                if (boost.id === 'technology') multiplier += 0.5;
-            });
-            
-            // Применяем специализированные бустеры
-            const specialtyBoosts = modifiers.value.filter(m => m.purchased && ['bakery_boost', 'shop_upgrade'].includes(m.id));
-            
-            buildings.value.forEach(building => {
-                let buildingMultiplier = 1;
-                
-                if (building.id === 'bakery' && specialtyBoosts.find(b => b.id === 'bakery_boost')) {
-                    buildingMultiplier += 1.0; // +100%
+            modifiers.value.forEach(m => {
+                if (m.purchased) {
+                    if (m.id === 'efficiency_boost') multiplier *= 1.2;
+                    if (m.id === 'marketing') multiplier *= 1.3;
+                    if (m.id === 'technology') multiplier *= 1.5;
                 }
-                if (building.id === 'shop' && specialtyBoosts.find(b => b.id === 'shop_upgrade')) {
-                    buildingMultiplier += 1.5; // +150%
-                }
-                
-                baseIncome *= buildingMultiplier;
             });
             
             stats.value.incomePerSecond = baseIncome * multiplier;
             
-            // Расчет силы клика: база + бонусы от модификаторов клика + процент от дохода
-            let clickBase = 1; // Базовый клик
-            
-            // Добавляем бонусы от купленных модификаторов клика
-            const clickBoosts = modifiers.value.filter(m => m.purchased && ['click_boost_1', 'click_boost_2', 'click_boost_3'].includes(m.id));
-            clickBoosts.forEach(boost => {
-                if (boost.id === 'click_boost_1') clickBase += 1;
-                if (boost.id === 'click_boost_2') clickBase += 5;
-                if (boost.id === 'click_boost_3') clickBase += 20;
+            // Расчет силы клика
+            let clickBase = 1;
+            modifiers.value.forEach(m => {
+                if (m.purchased) {
+                    if (m.id === 'click_boost_1') clickBase += 1;
+                    if (m.id === 'click_boost_2') clickBase += 5;
+                    if (m.id === 'click_boost_3') clickBase += 20;
+                }
             });
             
-            // Процент от пассивного дохода (чтобы клик рос вместе с бизнесом)
-            const incomeBonus = Math.floor(stats.value.incomePerSecond * 0.1);
-            
-            stats.value.clickValue = clickBase + incomeBonus;
+            const incomeBonus = Math.floor(stats.value.incomePerSecond * GAME_CONFIG.balance.clickIncomePercent);
+            stats.value.clickValue = (clickBase + incomeBonus) * prestige.value.multiplier;
         }
 
         // Добавление иконки в город
         function addCityIcon(icon) {
-            if (cityIcons.value.length < 20) {
+            if (cityIcons.value.length < GAME_CONFIG.balance.maxCityIcons) {
                 cityIcons.value.push(icon);
             } else {
                 cityIcons.value.shift();
@@ -294,270 +258,335 @@ createApp({
 
         // Вычисление прогресса
         function getProgressPercentage() {
-            const current = stats.value.money % (stats.value.cityLevel * 10000);
+            const current = stats.value.money % getLevelThreshold();
             const threshold = getLevelThreshold();
             return Math.min(100, Math.max(0, (current / threshold) * 100));
         }
 
-        // Цвет дохода в зависимости от типа
-        function getIncomeColor(type) {
-            if (type === 'global') return '#006400';
-            return '#28a745';
-        }
-
-        // Обновление UI
-        function updateUI() {
-            updateStats();
-        }
-
-        function updateStats() {
-            stats.value.totalBuildings = buildings.value.reduce((total, b) => total + b.count, 0);
-            
-            document.getElementById('app').querySelectorAll('.building-card').forEach(card => {
-                const buildingId = card.dataset.id;
-                const building = buildings.value.find(b => b.id === buildingId);
-                if (building) {
-                    const cost = getBuildingCost(building);
-                    if (stats.value.money >= cost && !card.classList.contains('purchased')) {
-                        card.classList.add('affordable');
-                    } else {
-                        card.classList.remove('affordable');
-                    }
-                }
-            });
-            
-            document.getElementById('app').querySelectorAll('.modifier-card').forEach(card => {
-                const modifierId = card.dataset.id;
-                const modifier = modifiers.value.find(m => m.id === modifierId);
-                if (modifier) {
-                    if (stats.value.money >= modifier.cost && !modifier.purchased) {
-                        card.classList.add('affordable');
-                    } else {
-                        card.classList.remove('affordable');
-                    }
-                }
-            });
-        }
-
-        // Уведомление SweetAlert2
+        // Уведомление
         function showNotification(message, type = 'success') {
-            Swal.fire({
-                icon: type === 'error' ? 'error' : 'success',
-                title: type === 'error' ? 'Ошибка!' : 'Успех!',
-                text: message,
-                timer: 2000,
-                showConfirmButton: false,
-                background: '#fff url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'48\' fill=\'%23FFD700\'/%3E%3Ctext x=\'50\' y=\'60\' text-anchor=\'middle\' font-size=\'40\' fill=\'%23006400\'%3E🏆%3C/text%3E%3C/svg%3E")',
-                color: '#006400'
-            });
-        }
-
-        // Автосохранение
-        function saveGame() {
-            const gameData = {
-                stats: stats.value,
-                buildings: buildings.value,
-                modifiers: modifiers.value,
-                cityIcons: cityIcons.value
-            };
-            
-            localStorage.setItem('monopolyClickerSave', JSON.stringify(gameData));
-            saveStatus.value = '💾 Сохранено!';
-            
-            setTimeout(() => {
-                saveStatus.value = '💾 Автосохранение включено';
-            }, 2000);
-        }
-
-        // Загрузка игры
-        function loadGame() {
-            const savedData = localStorage.getItem('monopolyClickerSave');
-            
-            if (savedData) {
-                try {
-                    const gameData = JSON.parse(savedData);
-                    
-                    stats.value = { ...stats.value, ...gameData.stats };
-                    buildings.value = gameData.buildings || buildings.value;
-                    cityIcons.value = gameData.cityIcons || [];
-                    
-                    // Обновляем модификаторы: сохраняем статус покупки для существующих и добавляем новые
-                    if (gameData.modifiers && Array.isArray(gameData.modifiers)) {
-                        const savedModifiersMap = {};
-                        gameData.modifiers.forEach(m => {
-                            if (m.id) savedModifiersMap[m.id] = m.purchased;
-                        });
-                        
-                        // Обновляем существующие модификаторы
-                        modifiers.value.forEach(modifier => {
-                            if (savedModifiersMap[modifier.id] !== undefined) {
-                                modifier.purchased = savedModifiersMap[modifier.id];
-                            }
-                        });
-                        
-                        // Добавляем недостающие модификаторы только если их нет в текущем массиве
-                        const existingIds = modifiers.value.map(m => m.id);
-                        if (!existingIds.includes('click_boost_1')) {
-                            modifiers.value.push({ id: 'click_boost_1', name: 'Сильные пальцы', description: '+$1 к доходу за клик', icon: '💪', cost: 50, purchased: false });
-                        }
-                        if (!existingIds.includes('click_boost_2')) {
-                            modifiers.value.push({ id: 'click_boost_2', name: 'Мощный хват', description: '+$5 к доходу за клик', icon: '🔥', cost: 300, purchased: false });
-                        }
-                        if (!existingIds.includes('click_boost_3')) {
-                            modifiers.value.push({ id: 'click_boost_3', name: 'Золотая рука', description: '+$20 к доходу за клик', icon: '✨', cost: 1500, purchased: false });
-                        }
-                    } else {
-                        // Если сохранения нет или оно повреждено, используем дефолтные значения
-                        modifiers.value = [
-                            { id: 'click_boost_1', name: 'Сильные пальцы', description: '+$1 к доходу за клик', icon: '💪', cost: 50, purchased: false },
-                            { id: 'click_boost_2', name: 'Мощный хват', description: '+$5 к доходу за клик', icon: '🔥', cost: 300, purchased: false },
-                            { id: 'click_boost_3', name: 'Золотая рука', description: '+$20 к доходу за клик', icon: '✨', cost: 1500, purchased: false },
-                            { id: 'efficiency_boost', name: 'Эффективность труда', description: '+20% ко всему доходу', icon: '⚡', cost: 500, purchased: false },
-                            { id: 'marketing', name: 'Маркетинг', description: '+30% ко всему доходу', icon: '📢', cost: 2000, purchased: false },
-                            { id: 'technology', name: 'Технологии', description: '+50% ко всему доходу', icon: '💻', cost: 10000, purchased: false },
-                            { id: 'bakery_boost', name: 'Свежая выпечка', description: '+100% доход от пекарни', icon: '🥐', cost: 300, purchased: false },
-                            { id: 'shop_upgrade', name: 'Розничная сеть', description: '+150% доход от магазинов', icon: '🛍️', cost: 1500, purchased: false }
-                        ];
-                    }
-                    
-                    showNotification('Игра загружена! Добро пожаловать назад!', 'success');
-                } catch (e) {
-                    console.error('Ошибка загрузки сохранения:', e);
-                }
-            } else {
-                // Если сохранения нет, используем дефолтные значения
-                modifiers.value = [
-                    { id: 'click_boost_1', name: 'Сильные пальцы', description: '+$1 к доходу за клик', icon: '💪', cost: 50, purchased: false },
-                    { id: 'click_boost_2', name: 'Мощный хват', description: '+$5 к доходу за клик', icon: '🔥', cost: 300, purchased: false },
-                    { id: 'click_boost_3', name: 'Золотая рука', description: '+$20 к доходу за клик', icon: '✨', cost: 1500, purchased: false },
-                    { id: 'efficiency_boost', name: 'Эффективность труда', description: '+20% ко всему доходу', icon: '⚡', cost: 500, purchased: false },
-                    { id: 'marketing', name: 'Маркетинг', description: '+30% ко всему доходу', icon: '📢', cost: 2000, purchased: false },
-                    { id: 'technology', name: 'Технологии', description: '+50% ко всему доходу', icon: '💻', cost: 10000, purchased: false },
-                    { id: 'bakery_boost', name: 'Свежая выпечка', description: '+100% доход от пекарни', icon: '🥐', cost: 300, purchased: false },
-                    { id: 'shop_upgrade', name: 'Розничная сеть', description: '+150% доход от магазинов', icon: '🛍️', cost: 1500, purchased: false }
-                ];
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    icon: type === 'error' ? 'error' : 'success',
+                    title: type === 'error' ? '❌ Ошибка!' : '✅ Успех!',
+                    text: message,
+                    timer: 1500,
+                    showConfirmButton: false
+                });
             }
         }
 
-        // Сброс игры
-        function resetGame() {
+        // Система достижений
+        function checkAchievements() {
+            achievements.value.forEach(achievement => {
+                if (unlockedAchievements.value.includes(achievement.id)) return;
+
+                let unlocked = false;
+                switch(achievement.id) {
+                    case 'first_click':
+                        unlocked = stats.value.totalClicks >= 1;
+                        break;
+                    case 'first_building':
+                        unlocked = buildings.value.some(b => b.count > 0);
+                        break;
+                    case 'ten_buildings':
+                        unlocked = buildings.value.reduce((sum, b) => sum + b.count, 0) >= 10;
+                        break;
+                    case 'millionaire':
+                        unlocked = stats.value.money >= 1000000;
+                        break;
+                    case 'city_master':
+                        unlocked = buildings.value.reduce((sum, b) => sum + b.count, 0) >= 50;
+                        break;
+                    case 'billionaire':
+                        unlocked = stats.value.money >= 1000000000;
+                        break;
+                    case 'all_buildings':
+                        unlocked = buildings.value.every(b => b.count > 0);
+                        break;
+                    case 'passive_income_1k':
+                        unlocked = stats.value.incomePerSecond >= 1000;
+                        break;
+                    case 'prestige_1':
+                        unlocked = prestige.value.level >= 1;
+                        break;
+                    case 'all_modifiers':
+                        unlocked = modifiers.value.every(m => m.purchased);
+                        break;
+                    case 'lazy_millionaire':
+                        unlocked = stats.value.passiveIncome >= 1000000;
+                        break;
+                }
+
+                if (unlocked) {
+                    unlockedAchievements.value.push(achievement.id);
+                    stats.value.money += achievement.reward;
+                    showNotification(`🎯 Достижение разблокировано: ${achievement.name}! +${achievement.reward}💰`);
+                }
+            });
+        }
+
+        function isAchievementUnlocked(id) {
+            return unlockedAchievements.value.includes(id);
+        }
+
+        // Система престижа
+        function activatePrestige() {
+            if (stats.value.money < GAME_CONFIG.prestige.threshold) return;
+            if (prestige.value.level >= GAME_CONFIG.prestige.maxLevel) return;
+
             Swal.fire({
-                title: 'Вы уверены?',
-                text: "Весь прогресс будет удален!",
-                icon: 'warning',
+                title: '✨ Активировать престиж?',
+                text: `Текущий уровень: ${prestige.value.level}\nНовый множитель: ${(prestige.value.multiplier * GAME_CONFIG.prestige.multiplier).toFixed(2)}x`,
+                icon: 'question',
                 showCancelButton: true,
-                confirmButtonColor: '#DC143C',
-                cancelButtonColor: '#888',
-                confirmButtonText: 'Да, сбросить!',
+                confirmButtonText: 'Да, перезагрузиться!',
                 cancelButtonText: 'Отмена'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    localStorage.removeItem('monopolyClickerSave');
+                    prestige.value.level++;
+                    prestige.value.multiplier *= GAME_CONFIG.prestige.multiplier;
                     
-                    stats.value = { money: 0, totalBuildings: 0, incomePerSecond: 0, cityLevel: 1, clickValue: 1 };
+                    // Сброс прогресса
+                    stats.value.money = 0;
+                    stats.value.passiveIncome = 0;
                     buildings.value.forEach(b => b.count = 0);
                     modifiers.value.forEach(m => m.purchased = false);
                     cityIcons.value = [];
                     
-                    updateUI();
-                    showNotification('Игра сброшена!');
+                    recalculateStats();
+                    saveGame();
+                    showNotification(`🌟 Престиж активирован! Уровень: ${prestige.value.level}`);
                 }
             });
         }
 
-        // Игровой цикл (пассивный доход)
-        function gameLoop() {
-            if (stats.value.incomePerSecond > 0) {
-                stats.value.money += stats.value.incomePerSecond / 10; // Обновляем каждые 100мс для плавности
-                updateStats();
+        // Таблица лидеров
+        function updateLeaderboard() {
+            const entry = {
+                money: stats.value.money,
+                buildings: buildings.value.reduce((sum, b) => sum + b.count, 0),
+                prestige: prestige.value.level,
+                timestamp: new Date().getTime()
+            };
+            
+            let lb = JSON.parse(localStorage.getItem('leaderboard') || '[]');
+            lb.push(entry);
+            lb.sort((a, b) => b.money - a.money);
+            lb = lb.slice(0, 10);
+            localStorage.setItem('leaderboard', JSON.stringify(lb));
+            leaderboard.value = lb;
+        }
+
+        function showLeaderboard() {
+            updateLeaderboard();
+            let html = '<table style="width:100%;text-align:left;"><tr><th>#</th><th>💰</th><th>🏢</th><th>✨</th></tr>';
+            leaderboard.value.forEach((entry, i) => {
+                html += `<tr><td>${i+1}</td><td>${formatNumber(entry.money)}</td><td>${entry.buildings}</td><td>${entry.prestige}</td></tr>`;
+            });
+            html += '</table>';
+            
+            Swal.fire({
+                title: '🏆 Таблица лидеров',
+                html: html,
+                icon: 'info'
+            });
+        }
+
+        // Справка
+        function showHelp() {
+            Swal.fire({
+                title: '📖 Справка',
+                html: `
+                    <div style="text-align:left;">
+                        <p><b>🖱️ Клик:</b> Пробел для клика</p>
+                        <p><b>🏢 Здания:</b> Клавиши 1-9 для покупки</p>
+                        <p><b>⚡ Модификаторы:</b> Усиливают доход</p>
+                        <p><b>✨ Престиж:</b> Перезагрузка с бонусом</p>
+                        <p><b>🎯 Достижения:</b> Получайте награды</p>
+                        <p><b>🌙 Тема:</b> Нажмите кнопку в углу</p>
+                    </div>
+                `,
+                icon: 'info'
+            });
+        }
+
+        // Импорт/экспорт
+        function exportSave() {
+            const saveData = {
+                stats: stats.value,
+                buildings: buildings.value,
+                modifiers: modifiers.value,
+                achievements: unlockedAchievements.value,
+                prestige: prestige.value,
+                cityIcons: cityIcons.value
+            };
+            
+            const dataStr = JSON.stringify(saveData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `game-save-${Date.now()}.json`;
+            link.click();
+            showNotification('✅ Сохранение экспортировано!');
+        }
+
+        function importSave() {
+            const input = document.getElementById('saveFileInput');
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
                 
-                // Уровень города
-                const levelThreshold = getLevelThreshold();
-                if (stats.value.money >= levelThreshold && stats.value.cityLevel < 10) {
-                    stats.value.cityLevel++;
-                    showNotification(`Уровень города повышен! Теперь уровень ${stats.value.cityLevel}!`);
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const saveData = JSON.parse(event.target.result);
+                        Object.assign(stats.value, saveData.stats);
+                        buildings.value = saveData.buildings || buildings.value;
+                        modifiers.value = saveData.modifiers || modifiers.value;
+                        unlockedAchievements.value = saveData.achievements || [];
+                        prestige.value = saveData.prestige || { level: 0, multiplier: 1 };
+                        cityIcons.value = saveData.cityIcons || [];
+                        
+                        recalculateStats();
+                        saveGame();
+                        showNotification('✅ Сохранение загружено!');
+                    } catch (err) {
+                        showNotification('❌ Ошибка при загрузке!', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        // Автосохранение
+        function saveGame() {
+            updateLeaderboard();
+            const gameData = {
+                stats: stats.value,
+                buildings: buildings.value,
+                modifiers: modifiers.value,
+                achievements: unlockedAchievements.value,
+                prestige: prestige.value,
+                cityIcons: cityIcons.value
+            };
+            localStorage.setItem('gameClickerSave', JSON.stringify(gameData));
+            saveStatus.value = '✅ Сохранено';
+            setTimeout(() => { saveStatus.value = '💾 Автосохранение'; }, 2000);
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem('gameClickerSave');
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    Object.assign(stats.value, data.stats);
+                    buildings.value = data.buildings || buildings.value;
+                    modifiers.value = data.modifiers || modifiers.value;
+                    unlockedAchievements.value = data.achievements || [];
+                    prestige.value = data.prestige || { level: 0, multiplier: 1 };
+                    cityIcons.value = data.cityIcons || [];
+                    recalculateStats();
+                } catch (e) {
+                    console.error('Ошибка загрузки:', e);
                 }
             }
         }
 
-        // Инициализация при загрузке
+        function resetGame() {
+            Swal.fire({
+                title: '⚠️ Сброс?',
+                text: 'Весь прогресс будет удален!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Сбросить',
+                cancelButtonText: 'Отмена'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    localStorage.removeItem('gameClickerSave');
+                    location.reload();
+                }
+            });
+        }
+
+        // Переключение темы
+        function toggleTheme() {
+            isDarkTheme.value = !isDarkTheme.value;
+            document.body.classList.toggle('light-theme');
+            localStorage.setItem('theme', isDarkTheme.value ? 'dark' : 'light');
+        }
+
+        // Игровой цикл
+        function gameLoop() {
+            if (stats.value.incomePerSecond > 0) {
+                const gain = stats.value.incomePerSecond / 10;
+                stats.value.money += gain;
+                stats.value.passiveIncome += gain;
+                updateStats();
+                
+                const levelThreshold = getLevelThreshold();
+                if (stats.value.money >= levelThreshold && stats.value.cityLevel < 10) {
+                    stats.value.cityLevel++;
+                    showNotification(`🏆 Уровень города: ${stats.value.cityLevel}!`);
+                }
+            }
+        }
+
+        function updateStats() {
+            stats.value.totalBuildings = buildings.value.reduce((sum, b) => sum + b.count, 0);
+        }
+
+        // Обработка клавиш
+        function handleKeyPress(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                handleClick();
+            } else if (e.key >= '1' && e.key <= '9') {
+                const index = parseInt(e.key) - 1;
+                if (index < buildings.value.length) {
+                    buyBuilding(index);
+                }
+            }
+        }
+
+        // Вычисляемые свойства
+        const clickModifiers = computed(() => modifiers.value.filter(m => ['click_boost_1', 'click_boost_2', 'click_boost_3'].includes(m.id)));
+        const generalModifiers = computed(() => modifiers.value.filter(m => ['efficiency_boost', 'marketing', 'technology'].includes(m.id)));
+        const specialtyModifiers = computed(() => modifiers.value.filter(m => ['bakery_boost', 'shop_upgrade', 'industrial_boom', 'architectural_marvel'].includes(m.id)));
+
+        // Инициализация
         onMounted(() => {
+            initializeFromConfig();
             loadGame();
             
-            // Отладка: проверяем модификаторы клика
-            console.log('Все модификаторы:', modifiers.value.map(m => ({ id: m.id, name: m.name, purchased: m.purchased })));
-            console.log('Количество модификаторов:', modifiers.value.length);
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'light') {
+                isDarkTheme.value = false;
+                document.body.classList.add('light-theme');
+            }
             
-            // Автосохранение каждые 5 секунд
-            autoSaveInterval = setInterval(saveGame, 5000);
-            
-            // Игровой цикл (обновление каждые 100мс)
-            gameLoopInterval = setInterval(gameLoop, 100);
+            window.addEventListener('keydown', handleKeyPress);
+            autoSaveInterval = setInterval(saveGame, GAME_CONFIG.balance.autoSaveInterval);
+            gameLoopInterval = setInterval(gameLoop, GAME_CONFIG.balance.gameLoopInterval);
         });
 
-        // Очистка при размонтировании
         onUnmounted(() => {
+            window.removeEventListener('keydown', handleKeyPress);
             if (autoSaveInterval) clearInterval(autoSaveInterval);
             if (gameLoopInterval) clearInterval(gameLoopInterval);
         });
 
-        // Вычисляемые свойства для фильтрации модификаторов
-        const clickModifiers = computed(() => 
-            modifiers.value.filter(m => ['click_boost_1', 'click_boost_2', 'click_boost_3'].includes(m.id))
-        );
-
-        const generalModifiers = computed(() => 
-            modifiers.value.filter(m => ['efficiency_boost', 'marketing', 'technology'].includes(m.id))
-        );
-
-        const specialtyModifiers = computed(() => 
-            modifiers.value.filter(m => ['bakery_boost', 'shop_upgrade'].includes(m.id))
-        );
-
-        // Методы для проверки типа модификатора (для использования в template)
-        function isClickModifier(modifier) {
-            if (!modifier || !modifier.id) return false;
-            return ['click_boost_1', 'click_boost_2', 'click_boost_3'].includes(modifier.id);
-        }
-
-        function isGeneralModifier(modifier) {
-            if (!modifier || !modifier.id) return false;
-            return ['efficiency_boost', 'marketing', 'technology'].includes(modifier.id);
-        }
-
-        function isSpecialtyModifier(modifier) {
-            if (!modifier || !modifier.id) return false;
-            return ['bakery_boost', 'shop_upgrade'].includes(modifier.id);
-        }
-
         return {
-            stats,
-            buildings,
-            modifiers,
-            clickModifiers,
-            generalModifiers,
-            specialtyModifiers,
-            cityIcons,
-            isAnimating,
-            saveStatus,
-            subtitleText,
-            clickHintText,
-            formatNumber,
-            getBuildingCost,
-            canAfford,
-            handleClick,
-            buyBuilding,
-            buyModifier,
-            resetGame,
-            getLevelThreshold,
-            getProgressPercentage,
-            getStatIcon,
-            getStatValue,
-            getStatLabel,
-            getIncomeColor,
-            isClickModifier,
-            isGeneralModifier,
-            isSpecialtyModifier
+            stats, buildings, modifiers, achievements, leaderboard, prestige, cityIcons,
+            isDarkTheme, isAnimating, saveStatus, subtitleText, clickHintText,
+            clickModifiers, generalModifiers, specialtyModifiers,
+            unlockedAchievements,
+            formatNumber, getBuildingCost, canAfford, handleClick, buyBuilding, buyModifier,
+            getStatIcon, getStatValue, getStatLabel, getLevelThreshold, getProgressPercentage,
+            isAchievementUnlocked, activatePrestige, showLeaderboard, showHelp,
+            exportSave, importSave, resetGame, toggleTheme
         };
     }
 }).mount('#app');

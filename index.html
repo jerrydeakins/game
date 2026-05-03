@@ -4,19 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Экономический Кликер: Монаполис</title>
-    
-    <!-- Подключение библиотек -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Подключение CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="app" class="game-container">
-        <!-- Шапка с заголовком -->
         <header class="header">
             <div class="header-top">
                 <div class="title-section">
@@ -27,165 +22,125 @@
                     <button class="control-btn" @click="toggleTheme" title="Переключить тему">
                         {{ isDarkTheme ? '☀️' : '🌙' }}
                     </button>
-                    <button class="control-btn" @click="showHelp" title="Справка">
-                        ℹ️
-                    </button>
-                    <button class="control-btn" @click="showLeaderboard" title="Таблица лидеров">
-                        🏆
-                    </button>
+                    <button class="control-btn" @click="showHelp" title="Справка">ℹ️</button>
+                    <button class="control-btn" @click="showLeaderboard" title="Таблица лидеров">🏆</button>
                 </div>
             </div>
             
-            <!-- Статистика -->
             <div class="stats-bar">
-                <div class="stat-item" v-for="(value, key) in stats" :key="key">
-                    <div class="stat-icon">{{ getStatIcon(key) }}</div>
-                    <div class="stat-value">{{ formatNumber(getStatValue(key)) }}</div>
-                    <div class="stat-label">{{ getStatLabel(key) }}</div>
+                <div class="stat-item">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-value">{{ formatNumber(stats.money) }}</div>
+                    <div class="stat-label">Деньги</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">🏢</div>
+                    <div class="stat-value">{{ stats.totalBuildings }}</div>
+                    <div class="stat-label">Здания</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">💵</div>
+                    <div class="stat-value">{{ formatNumber(stats.incomePerSecond) }}</div>
+                    <div class="stat-label">Доход/сек</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-value">{{ formatNumber(stats.clickValue) }}</div>
+                    <div class="stat-label">Клик</div>
                 </div>
             </div>
 
-            <!-- Престиж информация -->
-            <div v-if="prestige.level > 0" class="prestige-info">
-                <span>✨ Престиж: {{ prestige.level }} | Множитель: {{ (prestige.multiplier).toFixed(2) }}x</span>
-            </div>
-
-            <!-- Достижения -->
-            <div v-if="achievements.length > 0" class="achievements-preview">
-                <span class="achievement-count">🎯 Достижений: {{ unlockedAchievements }}/{{ achievements.length }}</span>
+            <div v-if="unlockedAchievements.length > 0" class="achievements-preview">
+                <span class="achievement-count">🎯 Достижений: {{ unlockedAchievements.length }}/{{ achievements.length }}</span>
                 <div class="achievement-icons">
                     <div v-for="achievement in achievements.slice(0, 5)" :key="achievement.id" 
                          class="achievement-badge" 
-                         :class="{ 'unlocked': isAchievementUnlocked(achievement.id) }"
-                         :title="achievement.name">
+                         :class="{ 'unlocked': isAchievementUnlocked(achievement.id) }">
                         {{ achievement.icon }}
-                    </div>
-                    <div v-if="achievements.length > 5" class="achievement-more">
-                        +{{ achievements.length - 5 }}
                     </div>
                 </div>
             </div>
         </header>
 
-        <!-- Область клика -->
         <section class="click-section">
             <button class="main-button" @click="handleClick" :disabled="isAnimating">
                 <span class="button-text">КЛИК!</span>
                 <span class="bonus-text">+{{ formatNumber(stats.clickValue) }}</span>
             </button>
             <p class="hint">{{ clickHintText }}</p>
-            <p class="keyboard-hint">💡 Пробел для клика | Цифры 1-9 для зданий</p>
+            <p class="keyboard-hint">💡 Пробел | 1-9 для зданий</p>
         </section>
 
-        <!-- Сетка зданий -->
-        <h2 class="section-title">🏗️ Стройте здания для пассивного дохода</h2>
-        
+        <h2 class="section-title">🏗️ Здания</h2>
         <div class="buildings-grid">
             <div v-for="(building, index) in buildings" :key="building.id" 
                  class="building-card"
                  :class="{ 'affordable': canAfford(building), 'purchased': building.count > 0 }"
                  @click="buyBuilding(index)">
-                
                 <div class="card-header">
                     <div class="count-badge">{{ building.count }}</div>
                     <div v-if="index < 9" class="keyboard-shortcut">{{ index + 1 }}</div>
                 </div>
-                
                 <div class="building-icon">{{ building.icon }}</div>
                 <h3 class="building-name">{{ building.name }}</h3>
                 <p class="building-description">{{ building.description }}</p>
                 <p class="building-cost">💰 {{ formatNumber(getBuildingCost(building)) }}</p>
-                <p class="building-income" :style="{ color: getIncomeColor(building.type) }">
-                    +{{ formatNumber(building.baseIncome) }}/сек
-                </p>
-                
-                <div v-if="building.count > 0" class="owned-badge">
-                    🏠 Построено
-                </div>
+                <p class="building-income">+{{ formatNumber(building.baseIncome) }}/сек</p>
             </div>
         </div>
 
-        <!-- Секция модификаторов -->
-        <h2 class="section-title">⚡ Модификаторы (бустеры)</h2>
+        <h2 class="section-title">⚡ Модификаторы</h2>
         
-        <!-- Блок клика -->
-        <h3 style="color: var(--gold); margin-top: 20px; font-size: 1.3em;">🖱️ Усиление клика</h3>
+        <h3 class="subsection-title">🖱️ Усиление клика</h3>
         <div class="modifiers-grid">
             <div v-for="modifier in clickModifiers" :key="modifier.id" 
                  class="modifier-card"
                  :class="{ 'affordable': canAfford(modifier), 'purchased': modifier.purchased }"
                  @click="buyModifier(modifiers.indexOf(modifier))">
-                
                 <div class="modifier-icon">{{ modifier.icon }}</div>
                 <h3 class="modifier-name">{{ modifier.name }}</h3>
                 <p class="modifier-desc">{{ modifier.description }}</p>
                 <p class="modifier-cost">💰 {{ formatNumber(modifier.cost) }}</p>
-                
-                <div v-if="modifier.purchased" class="purchased-badge">
-                    ✅ Активировано
-                </div>
+                <div v-if="modifier.purchased" class="purchased-badge">✅ Активировано</div>
             </div>
         </div>
         
-        <!-- Блок общего дохода -->
-        <h3 style="color: var(--gold); margin-top: 20px; font-size: 1.3em;">📈 Увеличение пассивного дохода</h3>
+        <h3 class="subsection-title">📈 Пассивный доход</h3>
         <div class="modifiers-grid">
             <div v-for="modifier in generalModifiers" :key="modifier.id"
                  class="modifier-card"
                  :class="{ 'affordable': canAfford(modifier), 'purchased': modifier.purchased }"
                  @click="buyModifier(modifiers.indexOf(modifier))">
-                
                 <div class="modifier-icon">{{ modifier.icon }}</div>
                 <h3 class="modifier-name">{{ modifier.name }}</h3>
                 <p class="modifier-desc">{{ modifier.description }}</p>
                 <p class="modifier-cost">💰 {{ formatNumber(modifier.cost) }}</p>
-                
-                <div v-if="modifier.purchased" class="purchased-badge">
-                    ✅ Активировано
-                </div>
+                <div v-if="modifier.purchased" class="purchased-badge">✅ Активировано</div>
             </div>
         </div>
         
-        <!-- Блок специализации -->
-        <h3 style="color: var(--gold); margin-top: 20px; font-size: 1.3em;">🏢 Специализированные улучшения</h3>
+        <h3 class="subsection-title">🏢 Специализированные улучшения</h3>
         <div class="modifiers-grid">
             <div v-for="modifier in specialtyModifiers" :key="modifier.id"
                  class="modifier-card"
                  :class="{ 'affordable': canAfford(modifier), 'purchased': modifier.purchased }"
                  @click="buyModifier(modifiers.indexOf(modifier))">
-                
                 <div class="modifier-icon">{{ modifier.icon }}</div>
                 <h3 class="modifier-name">{{ modifier.name }}</h3>
                 <p class="modifier-desc">{{ modifier.description }}</p>
                 <p class="modifier-cost">💰 {{ formatNumber(modifier.cost) }}</p>
-                
-                <div v-if="modifier.purchased" class="purchased-badge">
-                    ✅ Активировано
-                </div>
+                <div v-if="modifier.purchased" class="purchased-badge">✅ Активировано</div>
             </div>
         </div>
 
-        <!-- Визуализация города -->
         <section class="city-section">
             <h2 class="section-title">🌆 Ваш город</h2>
-            
             <div class="city-visual">
-                <div v-for="(icon, index) in cityIcons" :key="index" class="city-building">
-                    {{ icon }}
-                </div>
-                
-                <!-- Сообщение если город пуст -->
-                <p v-if="cityIcons.length === 0" class="empty-city">
-                    Постройте здания, чтобы увидеть ваш город!
-                </p>
+                <div v-for="(icon, index) in cityIcons" :key="index" class="city-building">{{ icon }}</div>
+                <p v-if="cityIcons.length === 0" class="empty-city">Постройте здания!</p>
             </div>
-
-            <!-- Прогресс уровня -->
             <div class="level-container">
-                <div class="level-badge">
-                    🏆 Уровень города: {{ stats.cityLevel }}
-                </div>
-                
+                <div class="level-badge">🏆 Уровень: {{ stats.cityLevel }}</div>
                 <div class="progress-container">
                     <div class="progress-bar-bg">
                         <div class="progress-fill" :style="{ width: getProgressPercentage() + '%' }"></div>
@@ -195,7 +150,6 @@
             </div>
         </section>
 
-        <!-- Достижения -->
         <section class="achievements-section">
             <h2 class="section-title">🎯 Достижения</h2>
             <div class="achievements-grid">
@@ -214,44 +168,30 @@
             </div>
         </section>
 
-        <!-- Престиж секция -->
         <section class="prestige-section">
             <h2 class="section-title">✨ Система Престижа</h2>
             <div class="prestige-info-box">
-                <p>Текущий престиж уровень: <strong>{{ prestige.level }}</strong></p>
-                <p>Множитель: <strong>{{ (prestige.multiplier).toFixed(2) }}x</strong></p>
-                <p>Требуемая сумма для перезагрузки: <strong>{{ formatNumber(GAME_CONFIG.prestige.threshold) }}</strong></p>
-                <p v-if="stats.money >= GAME_CONFIG.prestige.threshold" class="prestige-ready">
-                    🎉 Вы готовы к перезагрузке!
-                </p>
-                <button v-if="stats.money >= GAME_CONFIG.prestige.threshold && prestige.level < GAME_CONFIG.prestige.maxLevel"
+                <p>Текущий уровень: <strong>{{ prestige.level }}</strong></p>
+                <p>Множитель: <strong>{{ prestige.multiplier.toFixed(2) }}x</strong></p>
+                <p>Требуемая сумма: <strong>{{ formatNumber(10000000) }}</strong></p>
+                <button v-if="stats.money >= 10000000 && prestige.level < 100"
                         @click="activatePrestige" class="prestige-button">
                     ⭐ Активировать Престиж
                 </button>
             </div>
         </section>
 
-        <!-- Кнопки управления -->
         <footer class="footer">
             <div class="footer-buttons">
-                <button @click="exportSave" class="footer-button" title="Экспортировать сохранение">
-                    📥 Экспорт
-                </button>
-                <button @click="importSave" class="footer-button" title="Импортировать сохранение">
-                    📤 Импорт
-                </button>
-                <button @click="resetGame" class="footer-button reset-button" title="Сбросить игру">
-                    🔄 Сброс
-                </button>
+                <button @click="exportSave" class="footer-button">📥 Экспорт</button>
+                <button @click="importSave" class="footer-button">📤 Импорт</button>
+                <button @click="resetGame" class="footer-button reset-button">🔄 Сброс</button>
             </div>
             <p class="save-status">{{ saveStatus }}</p>
         </footer>
     </div>
 
-    <!-- Скрытое поле для импорта файла -->
     <input type="file" id="saveFileInput" accept=".json" style="display: none;">
-
-    <!-- Подключение конфига и JS -->
     <script src="config.js"></script>
     <script src="game.js"></script>
 </body>
